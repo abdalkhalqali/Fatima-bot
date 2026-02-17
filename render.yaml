@@ -1,0 +1,17 @@
+services:
+  - type: worker
+    name: fatima-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OWNER_ID
+        value: 5158480204
+      - key: ABDULKHALIQ_ID
+        value: 6818088581
+      - key: FATIMA_ID
+        value: 1295746334
