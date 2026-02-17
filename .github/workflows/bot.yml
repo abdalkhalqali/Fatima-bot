@@ -1,0 +1,30 @@
+name: تشغيل بوت فاطمة
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # كل 10 دقائق
+  workflow_dispatch:  # للتشغيل اليدوي
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: جلب المشروع
+        uses: actions/checkout@v3
+      
+      - name: إعداد Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: تثبيت المتطلبات
+        run: pip install -r requirements.txt
+      
+      - name: تشغيل البوت
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OWNER_ID: ${{ secrets.OWNER_ID }}
+          ABDULKHALIQ_ID: ${{ secrets.ABDULKHALIQ_ID }}
+          FATIMA_ID: ${{ secrets.FATIMA_ID }}
+        run: python main.py
