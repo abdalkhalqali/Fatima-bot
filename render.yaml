@@ -3,7 +3,7 @@ services:
     name: fatima-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    startCommand: python main.py   # <--- غير هذا السطر
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
