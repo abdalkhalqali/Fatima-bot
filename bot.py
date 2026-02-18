@@ -18,10 +18,9 @@ logging.basicConfig(
 )
 
 # ========== المعرفات ==========
-ABRAR_ID = 1406525284
 ABDULKHALIQ_ID = 6818088581
 OWNER_ID = 5158480204
-FATIMA_ID = 383022213  # فاطمة المطيري
+FATIMA_ID =  383022213 # فاطمة المطيري
 
 async def send_to_owner(context, text):
     """إرسال إشعار للمالك"""
@@ -54,15 +53,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user_message = update.message.text
-    user_name = update.message.from_user.first_name
+# قائمة بالنماذج المجانية التي قد تعمل
+FREE_MODELS = [
+    "gryphe/mythomax-l2-13b:free",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "microsoft/phi-3-mini-128k-instruct:free"
+]
 
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
-
+async def try_model(model_name, user_message):
+    """محاولة استخدام نموذج معين"""
     try:
-        # ✅ استخدام النموذج الذي يعمل (gryphe/mythomax-l2-13b)
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
@@ -72,7 +73,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "X-Title": "Telegram Bot"
             },
             json={
-                "model": "gryphe/mythomax-l2-13b",  # ✅ النموذج المجاني العامل
+                "model": model_name,
                 "messages": [
                     {"role": "system", "content": "أنت مساعد ذكي ومفيد. رد باللغة العربية دائماً."},
                     {"role": "user", "content": user_message}
@@ -80,14 +81,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "temperature": 0.7,
                 "max_tokens": 500
             },
-            timeout=30
+            timeout=15
         )
         
         data = response.json()
         
         if response.status_code == 200:
-            reply = data['choices'][0]['message']['content']
-            await update.message.reply_text(reply)
+            return True, data['choices'][0]['message']['content']
+        else:
+            error_msg = data.get('error', {}).get('message', 'خطأ غير معروف')
+            return False, f"{model_name}: {error_msg}"
+            
+    except Exception as e:
+        return False, f"{model_name}: {str(e)}"
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_message = update.message.text
+    user_name = update.message.from_user.first_name
+
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
+
+    # محاولة النماذج واحداً تلو الآخر
+    for model in FREE_MODELS:
+        success, result = await try_model(model, user_message)
+        
+        if success:
+            await update.message.reply_text(result)
             
             # إرسال نسخة للمالك للمستخدمين المهمين
             if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
@@ -97,16 +117,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"📩 **رسالة من {user_type}**\n"
                     f"👤 {user_name}\n"
                     f"💬 {user_message[:100]}...\n"
-                    f"🤖 {reply[:100]}...\n"
+                    f"🤖 {result[:100]}...\n"
                     f"⏰ {datetime.now().strftime('%H:%M:%S')}"
                 )
-        else:
-            error_msg = data.get('error', {}).get('message', 'خطأ غير معروف')
-            await update.message.reply_text(f"❌ خطأ: {error_msg}")
-            
-    except Exception as e:
-        logging.error(f"خطأ: {e}")
-        await update.message.reply_text(f"❌ حدث خطأ: {str(e)[:100]}")
+            return
+        
+        logging.warning(f"النموذج {model} فشل: {result}")
+    
+    # إذا فشلت كل النماذج
+    error_msg = "❌ عذراً، جميع نماذج الذكاء الاصطناعي غير متاحة حالياً. الرجاء المحاولة لاحقاً."
+    await update.message.reply_text(error_msg)
+    
+    if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
+        await send_to_owner(context, f"⚠️ فشل الذكاء الاصطناعي لـ {user_name}")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
@@ -114,14 +137,13 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("=" * 60)
-    print("🤖 بوت OpenRouter - النسخة العاملة")
+    print("🤖 بوت OpenRouter - مع تشخيص الأخطاء")
     print("=" * 60)
-    print(f"✅ النموذج: gryphe/mythomax-l2-13b (مجاني)")
     print(f"👤 أبرار: {ABRAR_ID}")
     print(f"👤 عبدالخالق: {ABDULKHALIQ_ID}")
     print(f"👤 فاطمة: {FATIMA_ID}")
     print(f"👑 المالك: {OWNER_ID}")
-    print("✅ سيتم إرسال نسخ من رسائل المهمين إليك")
+    print("✅ سيحاول 4 نماذج مجانية مختلفة")
     print("=" * 60)
     
     app.run_polling()
