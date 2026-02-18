@@ -6,10 +6,10 @@ import os
 from datetime import datetime
 
 # ========== قراءة المفاتيح من Environment Variables ==========
-BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')  # ✅ تم التحديث
-OPENROUTER_KEY = os.environ.get('OPENROUTER_KEY')
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')  # ✅ تم التحديث
 
-if not BOT_TOKEN or not OPENROUTER_KEY:
+if not BOT_TOKEN or not OPENROUTER_API_KEY:
     raise ValueError("❌ المفاتيح غير موجودة في Environment Variables!")
 
 logging.basicConfig(
@@ -60,7 +60,7 @@ async def try_model(model_name, user_message):
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_KEY}",
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",  # ✅ تم التحديث
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://t.me/your_bot",
                 "X-Title": "Telegram Bot"
@@ -128,7 +128,7 @@ def main():
     print("=" * 60)
     print(f"👤 فاطمة: {FATIMA_ID}")
     print(f"👑 المالك: {OWNER_ID}")
-    print("✅ تم تحديث اسم المتغير إلى TELEGRAM_BOT_TOKEN")
+    print("✅ TELEGRAM_BOT_TOKEN و OPENROUTER_API_KEY")
     print("=" * 60)
     
     app.run_polling()
