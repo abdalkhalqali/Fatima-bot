@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 # ========== قراءة المفاتيح من Environment Variables ==========
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')  # ✅ تم التحديث
 OPENROUTER_KEY = os.environ.get('OPENROUTER_KEY')
 
 if not BOT_TOKEN or not OPENROUTER_KEY:
@@ -17,7 +17,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# ========== المعرفات الخاصة بهذا البوت ==========
+# ========== المعرفات ==========
 FATIMA_ID = 383022213      # فاطمة المطيري
 OWNER_ID = 5158480204        # المالك
 
@@ -25,7 +25,6 @@ async def send_to_owner(context, text):
     """إرسال إشعار للمالك"""
     try:
         await context.bot.send_message(chat_id=OWNER_ID, text=text, parse_mode='Markdown')
-        logging.info(f"✅ تم إرسال إشعار للمالك")
     except Exception as e:
         logging.error(f"فشل إرسال للمالك: {e}")
 
@@ -41,7 +40,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         welcome_text = f"👑 **مرحباً أيها المالك!** 👑\n\nالبوت تحت أمرك."
     
     else:
-        welcome_text = "❌ هذا البوت خاص ولا يمكن استخدامه من قبل أشخاص آخرين."
+        welcome_text = "❌ هذا البوت خاص ولا يمكن استخدامه."
         await update.message.reply_text(welcome_text)
         return
     
@@ -100,29 +99,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
 
-    # محاولة النماذج واحداً تلو الآخر
     for model in FREE_MODELS:
         success, result = await try_model(model, user_message)
         
         if success:
             await update.message.reply_text(result)
             
-            # إرسال نسخة للمالك إذا كان المرسل هو فاطمة
             if user_id == FATIMA_ID:
                 await send_to_owner(
                     context,
                     f"📩 **رسالة من فاطمة**\n"
                     f"👤 {user_name}\n"
-                    f"💬 {user_message[:100]}...\n"
-                    f"🤖 {result[:100]}..."
+                    f"💬 {user_message[:100]}..."
                 )
             return
         
         logging.warning(f"النموذج {model} فشل")
     
-    # إذا فشلت كل النماذج
-    error_msg = "❌ عذراً، الذكاء الاصطناعي غير متاح حالياً. حاول مرة أخرى لاحقاً."
-    await update.message.reply_text(error_msg)
+    await update.message.reply_text("❌ عذراً، الذكاء الاصطناعي غير متاح حالياً.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
@@ -134,7 +128,7 @@ def main():
     print("=" * 60)
     print(f"👤 فاطمة: {FATIMA_ID}")
     print(f"👑 المالك: {OWNER_ID}")
-    print("✅ خاص بفاطمة فقط")
+    print("✅ تم تحديث اسم المتغير إلى TELEGRAM_BOT_TOKEN")
     print("=" * 60)
     
     app.run_polling()
