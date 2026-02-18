@@ -17,15 +17,15 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# ========== المعرفات ==========
-ABDULKHALIQ_ID = 6818088581
-OWNER_ID = 5158480204
-FATIMA_ID =  383022213 # فاطمة المطيري
+# ========== المعرفات الخاصة بهذا البوت ==========
+FATIMA_ID = 383022213      # فاطمة المطيري
+OWNER_ID = 5158480204        # المالك
 
 async def send_to_owner(context, text):
     """إرسال إشعار للمالك"""
     try:
         await context.bot.send_message(chat_id=OWNER_ID, text=text, parse_mode='Markdown')
+        logging.info(f"✅ تم إرسال إشعار للمالك")
     except Exception as e:
         logging.error(f"فشل إرسال للمالك: {e}")
 
@@ -33,27 +33,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_name = update.message.from_user.first_name
     
-    welcome_text = "👋 **مرحباً بك في بوت الذكاء الاصطناعي!**\n\n✨ أرسل لي أي سؤال وسأجيبك."
-    
-    # رسائل خاصة
-    if user_id == ABRAR_ID:
-        welcome_text = f"🌸 **أهلاً أبرار!** 🌸\n\nأهلاً بك!"
-        await send_to_owner(context, f"🌟 أبرار دخلت البوت")
-    
-    elif user_id == ABDULKHALIQ_ID:
-        welcome_text = f"👋 **مرحباً عبدالخالق!** 👋"
-        await send_to_owner(context, f"👤 عبدالخالق دخل البوت")
-    
-    elif user_id == FATIMA_ID:
-        welcome_text = f"🌸 **مرحباً فاطمة!** 🌸\n\nأهلاً بك!"
-        await send_to_owner(context, f"👤 فاطمة المطيري دخلت البوت")
+    if user_id == FATIMA_ID:
+        welcome_text = f"🌸 **مرحباً فاطمة!** 🌸\n\nأهلاً بك في بوتك الخاص!"
+        await send_to_owner(context, f"🌟 فاطمة دخلت البوت")
     
     elif user_id == OWNER_ID:
-        welcome_text = f"👑 **مرحباً أيها المالك!** 👑"
+        welcome_text = f"👑 **مرحباً أيها المالك!** 👑\n\nالبوت تحت أمرك."
+    
+    else:
+        welcome_text = "❌ هذا البوت خاص ولا يمكن استخدامه من قبل أشخاص آخرين."
+        await update.message.reply_text(welcome_text)
+        return
     
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
 
-# قائمة بالنماذج المجانية التي قد تعمل
+# قائمة بالنماذج المجانية
 FREE_MODELS = [
     "gryphe/mythomax-l2-13b:free",
     "google/gemini-2.0-flash-exp:free",
@@ -89,16 +83,20 @@ async def try_model(model_name, user_message):
         if response.status_code == 200:
             return True, data['choices'][0]['message']['content']
         else:
-            error_msg = data.get('error', {}).get('message', 'خطأ غير معروف')
-            return False, f"{model_name}: {error_msg}"
+            return False, f"خطأ {response.status_code}"
             
     except Exception as e:
-        return False, f"{model_name}: {str(e)}"
+        return False, str(e)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_message = update.message.text
     user_name = update.message.from_user.first_name
+
+    # التأكد أن المستخدم مصرح له
+    if user_id not in [FATIMA_ID, OWNER_ID]:
+        await update.message.reply_text("❌ هذا البوت خاص ولا يمكن استخدامه.")
+        return
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
 
@@ -109,27 +107,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if success:
             await update.message.reply_text(result)
             
-            # إرسال نسخة للمالك للمستخدمين المهمين
-            if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
-                user_type = "أبرار" if user_id == ABRAR_ID else "عبدالخالق" if user_id == ABDULKHALIQ_ID else "فاطمة"
+            # إرسال نسخة للمالك إذا كان المرسل هو فاطمة
+            if user_id == FATIMA_ID:
                 await send_to_owner(
                     context,
-                    f"📩 **رسالة من {user_type}**\n"
+                    f"📩 **رسالة من فاطمة**\n"
                     f"👤 {user_name}\n"
                     f"💬 {user_message[:100]}...\n"
-                    f"🤖 {result[:100]}...\n"
-                    f"⏰ {datetime.now().strftime('%H:%M:%S')}"
+                    f"🤖 {result[:100]}..."
                 )
             return
         
-        logging.warning(f"النموذج {model} فشل: {result}")
+        logging.warning(f"النموذج {model} فشل")
     
     # إذا فشلت كل النماذج
-    error_msg = "❌ عذراً، جميع نماذج الذكاء الاصطناعي غير متاحة حالياً. الرجاء المحاولة لاحقاً."
+    error_msg = "❌ عذراً، الذكاء الاصطناعي غير متاح حالياً. حاول مرة أخرى لاحقاً."
     await update.message.reply_text(error_msg)
-    
-    if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
-        await send_to_owner(context, f"⚠️ فشل الذكاء الاصطناعي لـ {user_name}")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
@@ -137,13 +130,11 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("=" * 60)
-    print("🤖 بوت OpenRouter - مع تشخيص الأخطاء")
+    print("🤖 بوت فاطمة - OpenRouter")
     print("=" * 60)
-    print(f"👤 أبرار: {ABRAR_ID}")
-    print(f"👤 عبدالخالق: {ABDULKHALIQ_ID}")
     print(f"👤 فاطمة: {FATIMA_ID}")
     print(f"👑 المالك: {OWNER_ID}")
-    print("✅ سيحاول 4 نماذج مجانية مختلفة")
+    print("✅ خاص بفاطمة فقط")
     print("=" * 60)
     
     app.run_polling()
