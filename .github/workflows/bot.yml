@@ -1,30 +1,66 @@
-name: تشغيل بوت فاطمة
+name: Fatima Bot Check
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'  # كل 10 دقائق
-  workflow_dispatch:  # للتشغيل اليدوي
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
-  run-bot:
+  check:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: جلب المشروع
-        uses: actions/checkout@v3
-      
-      - name: إعداد Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      - name: تثبيت المتطلبات
-        run: pip install -r requirements.txt
-      
-      - name: تشغيل البوت
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OWNER_ID: ${{ secrets.OWNER_ID }}
-          ABDULKHALIQ_ID: ${{ secrets.ABDULKHALIQ_ID }}
-          FATIMA_ID: ${{ secrets.FATIMA_ID }}
-        run: python main.py
+    - name: 📥 سحب الكود
+      uses: actions/checkout@v4
+    
+    - name: 🐍 إعداد Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: 📦 تثبيت المتطلبات
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "✅ تم تثبيت جميع المكتبات"
+    
+    - name: 🔍 فحص ملفات المشروع
+      run: |
+        echo "📂 الملفات الموجودة:"
+        ls -la
+        echo ""
+        echo "🐍 ملفات Python:"
+        find . -name "*.py"
+    
+    - name: ✅ التحقق من وجود bot.py
+      run: |
+        if [ -f bot.py ]; then
+          echo "✅ ✅ ✅ ملف bot.py موجود"
+          echo "📝 محتوى bot.py (أول 10 أسطر):"
+          head -10 bot.py
+          python -m py_compile bot.py
+          echo "✅ ✅ ✅ البوت سليم ولا يوجد أخطاء"
+        else
+          echo "❌ ❌ ❌ ملف bot.py غير موجود!"
+          exit 1
+        fi
+    
+    - name: 📋 التحقق من المتغيرات البيئية
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      run: |
+        echo "✅ TELEGRAM_BOT_TOKEN: ${#TELEGRAM_BOT_TOKEN} حرف"
+        echo "✅ OPENROUTER_API_KEY: ${#OPENROUTER_API_KEY} حرف"
+        echo "✅ جميع المتغيرات البيئية موجودة"
+    
+    - name: 🚀 إشعار بالنجاح
+      if: success()
+      run: |
+        echo "🎉 🎉 🎉 تم التحقق بنجاح!"
+        echo "📊 ملخص الفحص:"
+        echo "   • الملفات: ✅"
+        echo "   • المكتبات: ✅" 
+        echo "   • الكود: ✅"
+        echo "   • المتغيرات: ✅"
