@@ -5,11 +5,11 @@ import requests
 import os
 from datetime import datetime
 
-# ========== قراءة المفاتيح من Environment Variables ==========
-BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')  # ✅ تم التحديث
+# ========== قراءة المفاتيح من Environment Variables (بعد التعديل) ==========
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')              # ✅ تم التعديل
+OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY')         # ✅ تم التعديل
 
-if not BOT_TOKEN or not OPENROUTER_API_KEY:
+if not BOT_TOKEN or not OPENROUTER_KEY:
     raise ValueError("❌ المفاتيح غير موجودة في Environment Variables!")
 
 logging.basicConfig(
@@ -18,8 +18,10 @@ logging.basicConfig(
 )
 
 # ========== المعرفات ==========
-FATIMA_ID = 383022213      # فاطمة المطيري
-OWNER_ID = 5158480204        # المالك
+ABRAR_ID = 1406525284
+ABDULKHALIQ_ID = 6818088581
+OWNER_ID = 5158480204
+FATIMA_ID = 383022213  # فاطمة المطيري
 
 async def send_to_owner(context, text):
     """إرسال إشعار للمالك"""
@@ -32,21 +34,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_name = update.message.from_user.first_name
     
-    if user_id == FATIMA_ID:
-        welcome_text = f"🌸 **مرحباً فاطمة!** 🌸\n\nأهلاً بك في بوتك الخاص!"
-        await send_to_owner(context, f"🌟 فاطمة دخلت البوت")
+    welcome_text = "👋 **مرحباً بك في بوت الذكاء الاصطناعي!**\n\n✨ أرسل لي أي سؤال وسأجيبك."
+    
+    # رسائل خاصة
+    if user_id == ABRAR_ID:
+        welcome_text = f"🌸 **أهلاً أبرار!** 🌸\n\nأهلاً بك!"
+        await send_to_owner(context, f"🌟 أبرار دخلت البوت")
+    
+    elif user_id == ABDULKHALIQ_ID:
+        welcome_text = f"👋 **مرحباً عبدالخالق!** 👋"
+        await send_to_owner(context, f"👤 عبدالخالق دخل البوت")
+    
+    elif user_id == FATIMA_ID:
+        welcome_text = f"🌸 **مرحباً فاطمة!** 🌸\n\nأهلاً بك!"
+        await send_to_owner(context, f"👤 فاطمة المطيري دخلت البوت")
     
     elif user_id == OWNER_ID:
-        welcome_text = f"👑 **مرحباً أيها المالك!** 👑\n\nالبوت تحت أمرك."
-    
-    else:
-        welcome_text = "❌ هذا البوت خاص ولا يمكن استخدامه."
-        await update.message.reply_text(welcome_text)
-        return
+        welcome_text = f"👑 **مرحباً أيها المالك!** 👑"
     
     await update.message.reply_text(welcome_text, parse_mode='Markdown')
 
-# قائمة بالنماذج المجانية
+# قائمة بالنماذج المجانية التي قد تعمل
 FREE_MODELS = [
     "gryphe/mythomax-l2-13b:free",
     "google/gemini-2.0-flash-exp:free",
@@ -60,7 +68,7 @@ async def try_model(model_name, user_message):
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",  # ✅ تم التحديث
+                "Authorization": f"Bearer {OPENROUTER_KEY}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://t.me/your_bot",
                 "X-Title": "Telegram Bot"
@@ -82,41 +90,47 @@ async def try_model(model_name, user_message):
         if response.status_code == 200:
             return True, data['choices'][0]['message']['content']
         else:
-            return False, f"خطأ {response.status_code}"
+            error_msg = data.get('error', {}).get('message', 'خطأ غير معروف')
+            return False, f"{model_name}: {error_msg}"
             
     except Exception as e:
-        return False, str(e)
+        return False, f"{model_name}: {str(e)}"
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_message = update.message.text
     user_name = update.message.from_user.first_name
 
-    # التأكد أن المستخدم مصرح له
-    if user_id not in [FATIMA_ID, OWNER_ID]:
-        await update.message.reply_text("❌ هذا البوت خاص ولا يمكن استخدامه.")
-        return
-
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
 
+    # محاولة النماذج واحداً تلو الآخر
     for model in FREE_MODELS:
         success, result = await try_model(model, user_message)
         
         if success:
             await update.message.reply_text(result)
             
-            if user_id == FATIMA_ID:
+            # إرسال نسخة للمالك للمستخدمين المهمين
+            if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
+                user_type = "أبرار" if user_id == ABRAR_ID else "عبدالخالق" if user_id == ABDULKHALIQ_ID else "فاطمة"
                 await send_to_owner(
                     context,
-                    f"📩 **رسالة من فاطمة**\n"
+                    f"📩 **رسالة من {user_type}**\n"
                     f"👤 {user_name}\n"
-                    f"💬 {user_message[:100]}..."
+                    f"💬 {user_message[:100]}...\n"
+                    f"🤖 {result[:100]}...\n"
+                    f"⏰ {datetime.now().strftime('%H:%M:%S')}"
                 )
             return
         
-        logging.warning(f"النموذج {model} فشل")
+        logging.warning(f"النموذج {model} فشل: {result}")
     
-    await update.message.reply_text("❌ عذراً، الذكاء الاصطناعي غير متاح حالياً.")
+    # إذا فشلت كل النماذج
+    error_msg = "❌ عذراً، جميع نماذج الذكاء الاصطناعي غير متاحة حالياً. الرجاء المحاولة لاحقاً."
+    await update.message.reply_text(error_msg)
+    
+    if user_id in [ABRAR_ID, ABDULKHALIQ_ID, FATIMA_ID]:
+        await send_to_owner(context, f"⚠️ فشل الذكاء الاصطناعي لـ {user_name}")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
@@ -124,11 +138,13 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("=" * 60)
-    print("🤖 بوت فاطمة - OpenRouter")
+    print("🤖 بوت OpenRouter - النسخة النهائية")
     print("=" * 60)
+    print(f"👤 أبرار: {ABRAR_ID}")
+    print(f"👤 عبدالخالق: {ABDULKHALIQ_ID}")
     print(f"👤 فاطمة: {FATIMA_ID}")
     print(f"👑 المالك: {OWNER_ID}")
-    print("✅ TELEGRAM_BOT_TOKEN و OPENROUTER_API_KEY")
+    print("✅ المتغيرات البيئية: TELEGRAM_BOT_TOKEN, OPENROUTER_API_KEY")
     print("=" * 60)
     
     app.run_polling()
